@@ -1,7 +1,8 @@
-#path = getwd()
-#DataSetPath = paste(path, "/MyCSV/DataSets")
-#WorkSpacePath = paste(path,"MCMC_output")
-setwd("C:/Users/marti/OneDrive/Documents/Politecnico di Milano/Bayesian Statistics/als_data/Modified/MyCSV/Datasets")
+path = getwd()
+DataSetPath = paste(path, "/MyCSV/DataSets")
+WorkSpacePath = paste(path,"MCMC_output")
+
+setwd(DataSetPath)
 rm(list=ls())
 
 data = read.table("Combined_Lab_Well_Age_Sex_Onset_v2.csv",header=T, sep = ',')
@@ -12,7 +13,7 @@ partition = read.table("Partition_multipleDP.csv",header=T, sep = ',')
 partition = partition['x']
 
 J = dim(data)[1]
-nbrCovariates = dim(data)[2] -3 
+nbrCovariates = dim(data)[2] -3
 
 
 # ------------------------- Seperates data into one dataframe for each cluster -------------------------------
@@ -36,7 +37,7 @@ for (cluster_nr in 1:length(cluster_list)) {
   index = 1
   for (pat in 1:pat_in_cl) {
     pat_index = cluster_list[[cluster_nr]][pat]
-    patient_data[index, ] <- data[pat_index, ] # where the ID and covariates is located in the als_data 
+    patient_data[index, ] <- data[pat_index, ] # where the ID and covariates is located in the als_data
     index <- index+1
   }
   patient_data_list[[cluster_nr]] <- patient_data
@@ -113,20 +114,13 @@ for (t in 1:timeSteps) {
   for (iter in 1:n.chain) {
     Surv[iter, ] =  exp(-exp(log(t)-pat_mu[iter])*pat_alpha[iter])
   }
-  SurvQ[t, ]=quantile(Surv, c(0.025,0.5,0.975)) 
-} 
+  SurvQ[t, ]=quantile(Surv, c(0.025,0.5,0.975))
+}
 
 library(ggplot2)
 
 Surv_dataframe = data.frame(SQ1 = SurvQ[, 1], SQ2 = SurvQ[, 2], SQ3 = SurvQ[, 3], time=1:timeSteps)
-p <- ggplot(Surv_dataframe, aes(x=time, y=SQ2, ymin=SQ1, ymax=SQ3)) + 
+p <- ggplot(Surv_dataframe, aes(x=time, y=SQ2, ymin=SQ1, ymax=SQ3)) +
   geom_line() +
   geom_ribbon(alpha=0.2)
 p + labs(x="time", y="S", title = "Survival quantiles for patient 110")
-
-
-
-
-
-
-
