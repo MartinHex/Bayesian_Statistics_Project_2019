@@ -123,6 +123,6 @@ library(ggplot2)
 Surv_dataframe = data.frame(SQ1 = SurvQ[, 1], SQ2 = SurvQ[, 2], SQ3 = SurvQ[, 3], time=1:timeSteps)
 p <- ggplot(Surv_dataframe, aes(x=time, y=SQ2, ymin=SQ1, ymax=SQ3)) +
   geom_line() +
-  geom_ribbon(alpha=0.2)
+  geom_ribbon(alpha=0.2) +
+  geom_vline(xintercept = actualTime, color = "red", size=1.5)
 p + labs(x="time", y="S", title = "Survival quantiles for patient 2")
-p + geom_vline(xintercept = actualTime, color = "red", size=1.5)
