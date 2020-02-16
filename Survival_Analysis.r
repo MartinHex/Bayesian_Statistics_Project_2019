@@ -107,8 +107,9 @@ plot(ts(data.out[,'beta.7.']),xlab="t",ylab="beta: HEMOGLOBIN")
 timeSteps = 1000
 Surv = matrix(0, nrow = n.chain, ncol=1)
 SurvQ = matrix(0, nrow = timeSteps, ncol = 3)
-pat_mu = data.out$mu.110. #<--------------------- Change patient here!!!!
+pat_mu = data.out$mu.2. #<--------------------- Change patient here!!!!
 pat_alpha = data.out$alpha
+actualTime = CurrentData[2,3]
 
 for (t in 1:timeSteps) {
   for (iter in 1:n.chain) {
@@ -123,4 +124,5 @@ Surv_dataframe = data.frame(SQ1 = SurvQ[, 1], SQ2 = SurvQ[, 2], SQ3 = SurvQ[, 3]
 p <- ggplot(Surv_dataframe, aes(x=time, y=SQ2, ymin=SQ1, ymax=SQ3)) +
   geom_line() +
   geom_ribbon(alpha=0.2)
-p + labs(x="time", y="S", title = "Survival quantiles for patient 110")
+p + labs(x="time", y="S", title = "Survival quantiles for patient 2")
+p + geom_vline(xintercept = actualTime, color = "red", size=1.5)
