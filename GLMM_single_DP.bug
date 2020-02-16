@@ -1,0 +1,63 @@
+model{
+	# Precision Parameter alpha
+        a ~ dexp(1) ; 
+	alpha <- a + 0.5;   #Exp with support (0.5, +infinity)
+
+	# Constructive DP
+	pp[1] <- r[1];
+	for (j in 2:M) {
+		pp[j] <- r[j] * (1 - r[j - 1]) * pp[j -1 ] / r[j - 1]; # stick breaking process
+	}
+	p.sum <- sum(pp[]);	
+
+	for (j in 1:M){     
+		theta[j] ~ dnorm(mu.bb,tau.bb);   
+    r[j] ~ dbeta(1, alpha);		
+	# scaling to ensure sum to 1 
+		pi[j] <- pp[j] / p.sum ;		
+	}
+
+	mu.bb <- 0 ;    
+	tau.bb <- pow(lambda.bb,-2);   
+	lambda.bb ~ dunif(0,30);       
+	
+	for(i in 1:J){    
+		S[i] ~ dcat(pi[]);         # discrete stick break
+		bb[i] <- theta[S[i]];      # information from the given cluster.
+		
+		for (j in 1 : M) {
+				SC[i, j] <- equals(j, S[i]);    # Matrix indication which cluster a data point belong to
+			}
+		
+	}
+
+# Likelihood
+	for(i in 1:n.data){
+	  for (j in 1:nbrBins){ # One set of beta for each bin
+	    logit(p[i, j]) <- beta[1, j]*Limb_Onset[i] + beta[2,j]*FVC[i] + beta[3,j]*age[i] + beta[4,j]*sex[i] +
+	    beta[5,j]*creatine[i] + beta[6,j]*hemoglobin[i] + bb[index[i]];
+	    YSub[i,j] <- exp(p[i, j]);
+	  }
+  	Y[i] ~ dcat(YSub[i,]);
+  }
+
+
+# Prior for regression coefficients	      
+	for(i in 1:nbrCovs){
+	  for(j in 1:nbrBins){
+	    beta[i,j]~dnorm(0, 0.001);
+	  }
+	}
+
+
+	Snew ~ dcat(pi[]);
+	cluster <- theta[Snew];
+
+	# total clusters			
+	nbrClusters <- sum(cl[])
+	for (j in 1 : M) {
+		sumSC[j] <- sum(SC[ , j])
+		cl[j] <- step(sumSC[j] -1)
+	}
+		
+}
