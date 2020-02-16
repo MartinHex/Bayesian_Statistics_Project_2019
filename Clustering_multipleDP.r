@@ -6,7 +6,7 @@ setwd(DataSetPath)
 rm(list=ls())
 
 input = read.table("Combined_Lab_Well_Age_Sex_Onset_v2.csv",header=T, sep = ',')
-names(input) 
+names(input)
 
 summary(input)
 
@@ -18,7 +18,7 @@ M=35 # Truncation for DP
 
 library(rjags)      # JAGS interface for R
 library(plotrix)    # To plot the CIs
-set.seed(1)         
+set.seed(1)
 
 nbrBins = max(input$Death_Bin)
 
@@ -35,11 +35,11 @@ inits = list(beta=matrix(0,nrow=nbrCovariates,ncol=nbrBins),
 #-------------------  Create the JAGS model.  --------------------------
 setwd(path)
 
-modelGLMM_DP=jags.model("GLMM_multipleDP.bug",data=data,inits=inits,n.adapt=2000,n.chains=1) 
+modelGLMM_DP=jags.model("GLMM_multipleDP.bug",data=data,inits=inits,n.adapt=2000,n.chains=1)
 update(modelGLMM_DP,2000)
 
 variable.names = c("bb", "beta", "alpha")
-n.iter=5000 
+n.iter=5000
 thin=2
 
 outGLMM_DP=coda.samples(model=modelGLMM_DP,variable.names=variable.names,n.iter=n.iter,thin=thin)
@@ -50,6 +50,7 @@ save(outGLMM_DP,file='Clustering_Combined_MultiDP_SmallerSet.rdata')
 
 # -------------------------------- Potentially load data -----------------------------------
 rm(list=ls())
+# NOTE: file not on Github due to filesize limits, need to run locally to obtain the workspace.
 load('Clustering_Combined_MultiDP_SmallerSet.Rdata')
 
 # -------------------------------- Visualize data -------------------------------------
@@ -57,7 +58,7 @@ load('Clustering_Combined_MultiDP_SmallerSet.Rdata')
 data=as.matrix(outGLMM_DP)
 data=data.frame(data)
 attach(data)
-n.chain=dim(data)[1]   
+n.chain=dim(data)[1]
 
 # -------------------------------- From Henrik, automated visualization ------------------------------------
 # --------------------------------- Open a lot of windows for plotting -------------------------------------
@@ -83,7 +84,7 @@ y_strN = paste(rep('beta: ', 6), cov_names, sep='')
 #   par(mfrow=c(2,5))
 #   for (b in 11:20) {
 #     plot(out_data[, beta_str[c, b]], type='l', ylab = beta_str[c, b], xlab = "Iterations")
-#   } 
+#   }
 # }
 
 # plot all traceplots for each bin and all covariates
@@ -94,7 +95,7 @@ for(b in 1:B){
   par(mfrow=c(2, 3))
   for (c in 1:nrCovars) {
     plot(data[, beta_str[c, b]], type='l', ylab = y_strN[c], xlab = "Iterations")
-  } 
+  }
   mtext(paste('Bin ', b, sep = ''), side = 3, line = -3, outer = TRUE, font=2)
 }
 
@@ -121,7 +122,7 @@ for(b in 1:B){
   par(mfrow=c(2, 3))
   for (c in 1:nrCovars) {
     acf(data[, beta_str[c, b]],lwd=3, col="red3", main=y_strN[c])
-  } 
+  }
   mtext(paste('Bin ', b, sep = ''), side = 3, line = -1.3, outer = TRUE, font=2)
 }
 
@@ -137,7 +138,7 @@ graphics.off()
 #   x11()
 #   par(mfrow=c(2,5))
 #   for (b in 1:10) {
-#     plot(density(out_data[, beta_str[c, b]]), main = toString(c))#beta_str[c, b], xlab = NA, ylab = NA)  
+#     plot(density(out_data[, beta_str[c, b]]), main = toString(c))#beta_str[c, b], xlab = NA, ylab = NA)
 #   }
 # }
 
@@ -148,7 +149,7 @@ for(b in 1:B){
   par(mfrow=c(2, 3))
   for (c in 1:nrCovars) {
     plot(density(data[, beta_str[c, b]]), main=y_strN[c])
-  } 
+  }
   mtext(paste('Bin ', b, sep = ''), side = 3, line = -1.5, outer = TRUE, font=2)
 }
 
@@ -193,7 +194,7 @@ for (i in 0:19){
 #First Binder's loss
 sest.mat = matrix(0,nrow=nbrBins,ncol=J)
 for (k in 1:nbrBins) {
-  m=J 
+  m=J
   G=n.chain
   pihat <- matrix(0,ncol=m,nrow=m)
   for(i in 1:G){
@@ -201,36 +202,36 @@ for (k in 1:nbrBins) {
     cij <- outer(ss,ss,'==')
     pihat <- pihat+cij
   }
-  
+
   pihat <- pihat/G
-  
+
   #Binder loss function
   FF <- vector("numeric")
   K <- 0.9
   for(i in 1:G){
-    ss <- label.mat[[k]][i,] 
+    ss <- label.mat[[k]][i,]
     cij <- outer(ss,ss,'==')
     pluto <- (pihat-K)*as.matrix(cij)
     pluto <-  pluto[upper.tri(pluto)]
     FF[i] <- sum(pluto)
   }
-  
+
   plot(FF)
-  
+
   ind.bind <- which.max(FF)[1]
   label.mat[[k]][ind.bind,]
   ll.bind <- label.mat[[k]][ind.bind,]
   unici <- unique(ll.bind)
   l.uni <- length(unici)
-  
+
   ncl=l.uni
-  
+
   #Find partition for specified bin
   Sest=rep(0,J)
   for(i in 1:ncl){
     Sest[as.numeric(which(ll.bind==unici[i]))] = i
   }
-  
+
   #Combine all partitions for all bins to a matrix
   for (i in 1:J){
     sest.mat[k,i] = Sest[i]
@@ -238,7 +239,7 @@ for (k in 1:nbrBins) {
 }
 
 #Second Binder's loss
-m=J 
+m=J
 G=nbrBins
 pihat <- matrix(0,ncol=m,nrow=m)
 for(i in 1:G){
@@ -253,7 +254,7 @@ pihat <- pihat/G
 FF <- vector("numeric")
 K <- 0.1
 for(i in 1:G){
-  ss <- sest.mat[i,] 
+  ss <- sest.mat[i,]
   cij <- outer(ss,ss,'==')
   pluto <- (pihat-K)*as.matrix(cij)
   pluto <-  pluto[upper.tri(pluto)]
@@ -261,7 +262,7 @@ for(i in 1:G){
 }
 
 ind.bind <- which.max(FF)[1]
-ll.bind <- sest.mat[ind.bind,] 
+ll.bind <- sest.mat[ind.bind,]
 unici <- unique(ll.bind)
 l.uni <- length(unici)
 
