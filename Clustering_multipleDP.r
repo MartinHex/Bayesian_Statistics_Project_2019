@@ -275,7 +275,7 @@ for(i in 1:ncl){
 table(Sest2)
 
 setwd(DataSetPath)
-write.csv(Sest2, file ="double_Binder_Partition.csv", row.names=FALSE)
+write.csv(Sest2, file ="Partition_multipleDP.csv", row.names=FALSE)
 
 
 
