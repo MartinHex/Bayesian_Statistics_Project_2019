@@ -47,7 +47,7 @@ setwd(".../your/path")
 modelGLMM_DP=jags.model("GLMM_single_DP.bug",data=data,inits=inits,n.adapt=10000,n.chains=1)
 update(modelGLMM_DP,10000)
 
-variable.names=c("bb", "beta", "cluster", "alpha","nbrClusters")
+variable.names=c("bb", "beta", "alpha")
 n.iter=10000
 thin=10
 
