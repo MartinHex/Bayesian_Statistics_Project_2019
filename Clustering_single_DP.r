@@ -2,6 +2,8 @@ setwd(".../your/path/MyCSV/DataSets")
 
 rm(list=ls())
 
+# Read input data, here structured as: 
+# index, Limb_Onset, Death_Date, Death_Bin, FVCScore, Age, Sex, CREATINE and HEMOGLOBIN
 input = read.table("Combined_Lab_Well_Age_Sex_Onset_v2.csv",header=T, sep = ',')
 names(input)
 
@@ -10,7 +12,7 @@ summary(input)
 nbrCovariates = dim(input)[2] - 3 # one column of indices and death_date+death_bin
 n.data=dim(input)[1] # number of patients.
 J=n.data  # number of units, our case the same as number of data points/patients
-M=30 # truncation
+M=30 # truncation parameter in dirichlet process
 
 library(rjags)      # JAGS interface for R
 library(plotrix)    # To plot the CIs
@@ -18,11 +20,11 @@ set.seed(1)
 
 #If the indexing starts for 0 we need to add 1 to allign, to port between python and R
 input$index = input$index + 1
-nbrBins = max(input$Death_Bin)
+nbrBins = max(input$Death_Bin) # Number of discrete time steps
+# Data for JAGS model
 data <- list(Y=input$Death_Bin, Limb_Onset=input$Limb_Onset, FVC = input$FVCScore, age=input$Age,
              sex=input$Sex, creatine=input$CREATININE, hemoglobin=input$HEMOGLOBIN, index=input$index, n.data=n.data,
              J=J,M=M, nbrCovs=nbrCovariates, nbrBins=nbrBins)
-
 
 #Initiate variables for JAGS
 r=rep(0.5,M)
@@ -31,12 +33,11 @@ S=rep(1,n.data)
 Y = rep(0, n.data)
 
 inits = list(
-  beta=matrix(0,nrow=nbrCovariates,ncol=nbrBins),  #all covariates minus one to predict, number of death bins
+  beta=matrix(0,nrow=nbrCovariates,ncol=nbrBins),  # Regresstion parameter for all covariates and each bin
   lambda.bb = 1,
   r=r,
   theta= theta,
   S = S,
-  Snew = 1,
   .RNG.seed=2,
   .RNG.name = 'base::Wichmann-Hill'
 )
@@ -54,7 +55,7 @@ thin=10
 outGLMM_DP=coda.samples(model=modelGLMM_DP,variable.names=variable.names,n.iter=n.iter,thin=thin)
 
 setwd(".../your/path/MCMC_output")
-save(outGLMM_DP,file='Clustering_Combined_10000.rdata')
+save(outGLMM_DP,file='GLMMDP_output_20bins_15_02_10000.rdata')
 
 
 
@@ -64,41 +65,41 @@ save(outGLMM_DP,file='Clustering_Combined_10000.rdata')
 rm(list=ls())
 
 setwd(".../your/path/MyCSV/DataSets")
-ALS_data = read.csv("Combined_Lab_Well_Age_Sex_Onset_v2.csv", header = T, sep=",")
+ALS_data = read.csv("Combined_Lab_Well_Age_Sex_Onset_v2.csv", header = T, sep=",") # load initial covariates
 attach(ALS_data)
 head(ALS_data)
 
 nrPat = nrow(ALS_data)
 J = nrow(ALS_data)
 nrCovars = ncol(ALS_data)-3 # index, death_bin and death_date
-B = max(ALS_data$Death_Bin) # number of bins
+B = max(ALS_data$Death_Bin) # number of discrete time steps
 
 library(coda)
 library(plotrix)
 library(latex2exp)
 
 setwd(".../your/path/MCMC_output")
-load('GLMMDP_output_20bins_15_02_10000.rdata')
+load('GLMMDP_output_20bins_15_02_10000.rdata') # Load MCMC output workspace
 
 out_data=as.matrix(outGLMM_DP)
 out_data=data.frame(out_data)
 attach(out_data)
-n.chain=dim(out_data)[1]   # final sample size
+n.chain=dim(out_data)[1]   # final sample size of the MCMC chain
 
-beta_str = matrix(nrow = nrCovars, ncol = B)
+beta_str = matrix(nrow = nrCovars, ncol = B) # Names of regression parameters in MCMC output
 for (i in 1:nrCovars) {
   beta_str[i, ] = paste('beta.', i, '.', 1:B, '.', sep = '')
 }
 
 cov_names = c('Limb_Onset', 'FVC_Score', 'AGE', 'SEX', 'CREATINE', 'HEMOGLOBIN')
-y_strN = paste(rep('beta: ', 6), cov_names, sep='')
+y_strN = paste(rep('beta: ', 6), cov_names, sep='') # For axis labels in plots
 
 
 ##################
 ### TRACEPLOTS ###
 ##################
 
-# plot all traceplots for each bin and all covariates
+# Plot all traceplots of beta for each bin and all covariates
 for(b in 1:B){
   t_name = paste('Traceplot_bin ', b, sep = '')
   x11(title = t_name)
@@ -111,7 +112,7 @@ for(b in 1:B){
 
 graphics.off()
 
-# Traceplots from b - values from the DP
+# Traceplots of b - values from the DP
 for (i in 1:nrPat) {
   if(i%%12==0) {
     x11()
@@ -128,6 +129,7 @@ graphics.off()
 ## Autocorrelation plots ###
 ############################
 
+# Plot autocorrelation of beta for each bin and all covariates
 for(b in 1:B){
   x11(title = paste('Autocorrelation_bin ', b, sep = ''))
   par(mfrow=c(2, 3))
@@ -143,6 +145,7 @@ graphics.off()
 # Density plots#
 ################
 
+# Plot all density distribution of beta for each bin and all covariates
 for(b in 1:B){
   x11(title = paste('Density_function_bin ', b, sep = ''))
   par(mfrow=c(2, 3))
@@ -155,7 +158,7 @@ for(b in 1:B){
 graphics.off()
 
 
-# Mean
+# Mean of beta in each bin
 for (b in 1:B) {
   for (c in 1:nrCovars) {
     print(beta_str[c, b])
@@ -188,7 +191,7 @@ mean(out_data[,'nbrClusters']);var(out_data[,'nbrClusters'])
 ###################################
 # Cluster estimation by Lau&Green #
 ###################################
-label.mat = as.matrix(out_data[, 2:(nrPat+1)]) # extract cluster labels
+label.mat = as.matrix(out_data[, 2:(nrPat+1)]) # Extract cluster labels from position in MCMC output
 
 pihat <- matrix(0,ncol=J,nrow=J)
 for(i in 1:n.chain){
@@ -231,9 +234,9 @@ for(i in 1:ncl){
 Sest
 table(Sest)
 
-# if partition requires to be saved:
+# if partition requires to be saved as csv:
 #setwd(".../your/path/MyCSV/Datasets")
-# write.csv(Sest,'partition_(2).csv')
+# write.csv(Sest,'partition_sing_DP_10000.csv')
 
 nclusLG=length(unique(Sest))
 nclusLG
@@ -254,12 +257,15 @@ for(i in 1:nclusLG)
 label
 cluster_list
 
-# Save patient partition, including the data
+# Save patient partition as R workspace
 save(cluster_list, file='Cluster_10000.rdata')
 
-################################
-## Patient data for each cluster
-################################
+#################################
+# Patient data for each cluster #
+#################################
+
+# Extract covariates and information for each cluster
+
 rm(list=ls())
 
 ALS_data = read.csv("Combined_Lab_Well_Age_Sex_Onset_v2.csv", header = T, sep=",")
@@ -268,7 +274,7 @@ load('Cluster_10000.Rdata')
 ALS_data$index = ALS_data$index+1
 
 nrPat = nrow(ALS_data)
-nrCovars = ncol(ALS_data)-3 # index, death_bin and death_date
+nrCovars = ncol(ALS_data)-3 # index, death_bin and death_date not covariates
 
 als_tmp = as.matrix(ALS_data[, ])
 als_tmp = apply(als_tmp,2, as.numeric)
@@ -286,54 +292,7 @@ for (cluster_nr in 1:length(cluster_list)) {
   patient_data_list[[cluster_nr]] <- patient_data
 }
 
-# Save patient data according to partition
+# Save patient data according to partition in R workspace list
 save(patient_data_list, file='patient_cluster_10000.rdata')
 load('patient_cluster_10000.rdata')
 
-########################
-## Meand and Variance ##
-########################
-library(Rfast) # for column variance colVars
-
-nbrClusters = length(cluster_list)
-covariate_mean = matrix(0, nrow = nbrClusters, ncol = nrCovars)
-covariate_var = matrix(0, nrow = nbrClusters, ncol = nrCovars)
-for (i in 1:nbrClusters) {
-  cluster_data <- patient_data_list[[i]][,] # where the covariates of cluster i is located
-
-  if(length(cluster_data)>nrCovars+2){
-    covariate_mean[i, 1:3] <- apply(cluster_data[, 1:3], 2, median)
-    covariate_mean[i, 4:nrCovars] <- apply(cluster_data[, 6:39], 2, mean) #not interested in survival mean
-    covariate_var[i, 1:3] <- apply(cluster_data[, 1:3], 2, var)
-    covariate_var[i, 4:nrCovars] <- apply(cluster_data[, 6:39], 2, var)
-  }
-
-  else {
-    covariate_mean[i, 1:3] <- cluster_data[1:3]
-    covariate_mean[i, 4:nrCovars] <- cluster_data[6:39]
-    covariate_var[i, ] <- matrix(0, nrow = 1, ncol = 37)
-  }
-}
-covariate_mean
-covariate_var
-
-
-###########################
-#### Norm plot of covs ####
-###########################
-
-cl_ch = 1 # specify cluster for plot
-
-# Normalization: 0-1 with respect to each covariate
-scaled_pat_data <- patient_data_list[[cl_ch]][,]
-#scaled_pat_data[, 1:3] <- patient_data_list[[cl_ch]][, 1:3]
-for (i in 4:39) {
-  max_tmp = max(patient_data_list[[cl_ch]][, i])
-  scaled_pat_data[, i] <- patient_data_list[[cl_ch]][, i]/max_tmp
-}
-
-x11()
-par(mfrow=c(2,6))
-for (i in 1:length(scaled_pat_data[, 1])){
-  barplot(scaled_pat_data[i, ], horiz = TRUE, xlim = c(0 , 1 ))
-}
