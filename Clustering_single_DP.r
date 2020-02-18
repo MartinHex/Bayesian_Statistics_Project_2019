@@ -1,28 +1,25 @@
-path = getwd()
-DataSetPath = paste(path, "/MyCSV/DataSets")
-WorkSpacePath = paste(path,"MCMC_output")
-setwd(DataSetPath)
+setwd(".../your/path/MyCSV/DataSets")
 
 rm(list=ls())
 
 input = read.table("Combined_Lab_Well_Age_Sex_Onset_v2.csv",header=T, sep = ',')
-names(input) 
+names(input)
 
 summary(input)
 
 nbrCovariates = dim(input)[2] - 3 # one column of indices and death_date+death_bin
 n.data=dim(input)[1] # number of patients.
 J=n.data  # number of units, our case the same as number of data points/patients
-M=30 # truncation serie Sethuraman
+M=30 # truncation
 
 library(rjags)      # JAGS interface for R
 library(plotrix)    # To plot the CIs
-set.seed(1)         
+set.seed(1)
 
 #If the indexing starts for 0 we need to add 1 to allign, to port between python and R
 input$index = input$index + 1
 nbrBins = max(input$Death_Bin)
-data <- list(Y=input$Death_Bin, Limb_Onset=input$Limb_Onset, FVC = input$FVCScore, age=input$Age, 
+data <- list(Y=input$Death_Bin, Limb_Onset=input$Limb_Onset, FVC = input$FVCScore, age=input$Age,
              sex=input$Sex, creatine=input$CREATININE, hemoglobin=input$HEMOGLOBIN, index=input$index, n.data=n.data,
              J=J,M=M, nbrCovs=nbrCovariates, nbrBins=nbrBins)
 
@@ -34,7 +31,7 @@ S=rep(1,n.data)
 Y = rep(0, n.data)
 
 inits = list(
-  beta=matrix(0,nrow=nbrCovariates,ncol=nbrBins),  #all covariates minus one to predict, number of death bins 
+  beta=matrix(0,nrow=nbrCovariates,ncol=nbrBins),  #all covariates minus one to predict, number of death bins
   lambda.bb = 1,
   r=r,
   theta= theta,
@@ -45,18 +42,18 @@ inits = list(
 )
 
 #-------------------  Create the JAGS model.  --------------------------
-setwd(path)
+setwd(".../your/path")
 
-modelGLMM_DP=jags.model("my_bin_GLMM.bug",data=data,inits=inits,n.adapt=10000,n.chains=1) 
+modelGLMM_DP=jags.model("GLMM_single_DP.bug",data=data,inits=inits,n.adapt=10000,n.chains=1)
 update(modelGLMM_DP,10000)
 
 variable.names=c("bb", "beta", "cluster", "alpha","nbrClusters")
-n.iter=10000 
-thin=10  
+n.iter=10000
+thin=10
 
 outGLMM_DP=coda.samples(model=modelGLMM_DP,variable.names=variable.names,n.iter=n.iter,thin=thin)
 
-setwd(WorkSpacePath)
+setwd(".../your/path/MCMC_output")
 save(outGLMM_DP,file='Clustering_Combined_10000.rdata')
 
 
@@ -66,6 +63,7 @@ save(outGLMM_DP,file='Clustering_Combined_10000.rdata')
 #####################
 rm(list=ls())
 
+setwd(".../your/path/MyCSV/DataSets")
 ALS_data = read.csv("Combined_Lab_Well_Age_Sex_Onset_v2.csv", header = T, sep=",")
 attach(ALS_data)
 head(ALS_data)
@@ -75,14 +73,14 @@ J = nrow(ALS_data)
 nrCovars = ncol(ALS_data)-3 # index, death_bin and death_date
 B = max(ALS_data$Death_Bin) # number of bins
 
-library(coda)        
-library(plotrix)     
+library(coda)
+library(plotrix)
 library(latex2exp)
 
-# NOTE: file not on Github due to filesize limits, need to run locally to obtain the workspace.
+setwd(".../your/path/MCMC_output")
 load('GLMMDP_output_20bins_15_02_10000.rdata')
 
-out_data=as.matrix(outGLMM_DP) 
+out_data=as.matrix(outGLMM_DP)
 out_data=data.frame(out_data)
 attach(out_data)
 n.chain=dim(out_data)[1]   # final sample size
@@ -107,7 +105,7 @@ for(b in 1:B){
   par(mfrow=c(2, 3))
   for (c in 1:nrCovars) {
     plot(out_data[, beta_str[c, b]], type='l', ylab = y_strN[c], xlab = "Iterations")
-  } 
+  }
   mtext(paste('Bin ', b, sep = ''), side = 3, line = -3, outer = TRUE, font=2)
 }
 
@@ -117,7 +115,7 @@ graphics.off()
 for (i in 1:nrPat) {
   if(i%%12==0) {
     x11()
-    par(mfrow=c(2,6)) 
+    par(mfrow=c(2,6))
   }
   bb_str = paste('bb.', i, '.', sep = '')
   b_str = paste('b', i, sep = '')
@@ -135,7 +133,7 @@ for(b in 1:B){
   par(mfrow=c(2, 3))
   for (c in 1:nrCovars) {
     acf(out_data[, beta_str[c, b]],lwd=3, col="red3", main=y_strN[c])
-  } 
+  }
   mtext(paste('Bin ', b, sep = ''), side = 3, line = -1.3, outer = TRUE, font=2)
 }
 
@@ -150,7 +148,7 @@ for(b in 1:B){
   par(mfrow=c(2, 3))
   for (c in 1:nrCovars) {
     plot(density(out_data[, beta_str[c, b]]), main=y_strN[c])
-  } 
+  }
   mtext(paste('Bin ', b, sep = ''), side = 3, line = -1.5, outer = TRUE, font=2)
 }
 
@@ -169,7 +167,7 @@ for (b in 1:B) {
 #################
 # alpha and K_n #
 #################
-# Traceplots 
+# Traceplots
 x11()
 par(mfrow=c(1,2))
 plot(out_data[,'alpha'],main='total mass',type='l', ylab = NA) #if a prior is assigned for alpha
@@ -179,7 +177,7 @@ plot(out_data[,'nbrClusters'],main='K_n',type='l')
 x11()
 par(mfrow=c(1,2))
 plot(density(out_data[,'alpha']),main='total mass', ylab = NA)
-plot(table(out_data[,'nbrClusters']),main='K_n') 
+plot(table(out_data[,'nbrClusters']),main='K_n')
 
 # Mean and Var
 mean(alpha);var(alpha)
@@ -204,7 +202,7 @@ pihat <- pihat/n.chain
 FF <- vector("numeric")
 K <- 0.5
 for(i in 1:n.chain){
-  ss <- label.mat[i,] 
+  ss <- label.mat[i,]
   cij <- outer(ss,ss,'==')
   pluto <- (pihat-K)*as.matrix(cij)
   pluto <-  pluto[upper.tri(pluto)]
@@ -216,11 +214,9 @@ plot(FF)
 ind.bind <- which.max(FF)[1]
 label.mat[ind.bind,]
 plot(FF)
-ll.bind <- label.mat[ind.bind,] 
+ll.bind <- label.mat[ind.bind,]
 unici <- unique(ll.bind)
-unici
-l.uni <- length(unici) # estimated number of groups 
-l.uni
+l.uni <- length(unici) # estimated number of groups
 
 ncl=l.uni
 for(i in 1:ncl){
@@ -236,6 +232,7 @@ Sest
 table(Sest)
 
 # if partition requires to be saved:
+#setwd(".../your/path/MyCSV/Datasets")
 # write.csv(Sest,'partition_(2).csv')
 
 nclusLG=length(unique(Sest))
@@ -257,7 +254,7 @@ for(i in 1:nclusLG)
 label
 cluster_list
 
-# Save patient partition
+# Save patient partition, including the data
 save(cluster_list, file='Cluster_10000.rdata')
 
 ################################
@@ -283,7 +280,7 @@ for (cluster_nr in 1:length(cluster_list)) {
   index = 1
   for (pat in 1:pat_in_cl) {
     pat_index = cluster_list[[cluster_nr]][pat]
-    patient_data[index, ] <- als_tmp[pat_index, ] # where the ID and covariates is located in the als_data 
+    patient_data[index, ] <- als_tmp[pat_index, ] # where the ID and covariates is located in the als_data
     index <- index+1
   }
   patient_data_list[[cluster_nr]] <- patient_data
@@ -303,14 +300,14 @@ covariate_mean = matrix(0, nrow = nbrClusters, ncol = nrCovars)
 covariate_var = matrix(0, nrow = nbrClusters, ncol = nrCovars)
 for (i in 1:nbrClusters) {
   cluster_data <- patient_data_list[[i]][,] # where the covariates of cluster i is located
-  
+
   if(length(cluster_data)>nrCovars+2){
     covariate_mean[i, 1:3] <- apply(cluster_data[, 1:3], 2, median)
     covariate_mean[i, 4:nrCovars] <- apply(cluster_data[, 6:39], 2, mean) #not interested in survival mean
     covariate_var[i, 1:3] <- apply(cluster_data[, 1:3], 2, var)
     covariate_var[i, 4:nrCovars] <- apply(cluster_data[, 6:39], 2, var)
   }
-  
+
   else {
     covariate_mean[i, 1:3] <- cluster_data[1:3]
     covariate_mean[i, 4:nrCovars] <- cluster_data[6:39]
