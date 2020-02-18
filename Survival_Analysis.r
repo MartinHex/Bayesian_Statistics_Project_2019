@@ -1,15 +1,10 @@
-path = getwd()
-DataSetPath = paste(path, "/MyCSV/DataSets")
-WorkSpacePath = paste(path,"MCMC_output")
-
-setwd(DataSetPath)
+setwd(".../your/path/MyCSV/Datasets")
 rm(list=ls())
 
 data = read.table("Combined_Lab_Well_Age_Sex_Onset_v2.csv",header=T, sep = ',')
 data = as.matrix(data)
 
-setwd("C:/Users/marti/OneDrive/Programmering/R/School/BayesianStatistics")
-partition = read.table("Partition_multipleDP.csv",header=T, sep = ',')
+partition = read.table("partition_sing_DP_10000.csv",header=T, sep = ',')
 partition = partition['x']
 
 J = dim(data)[1]
@@ -49,7 +44,7 @@ for (cluster_nr in 1:length(cluster_list)) {
 # ----------------------------- Create and run the model with given cluster --------------------
 
 library(rjags)
-myCluster = 4
+myCluster = 2
 CurrentData = patient_data_list[myCluster][[1]]
 n.data = dim(CurrentData)[1]
 dat <- list( Age=CurrentData[,6], t=CurrentData[,3], Sex=CurrentData[,7], Is=CurrentData[,2],
@@ -58,6 +53,7 @@ dat <- list( Age=CurrentData[,6], t=CurrentData[,3], Sex=CurrentData[,7], Is=Cur
 
 inits = list(beta=rep(0,7),alpha=1)
 
+setwd(".../your/path")
 modelAFT <- jags.model("Survival.bug",data=dat,inits=inits,n.adapt=50000,n.chains=1)
 
 
@@ -65,14 +61,14 @@ modelAFT <- jags.model("Survival.bug",data=dat,inits=inits,n.adapt=50000,n.chain
 update(modelAFT,50000)
 
 
-variable.names=c("mu", "alpha","beta") # monitoring#
+variable.names=c("mu", "alpha","beta") # monitor
 n.iter=50000
 thin=20
 
 outputAFT <- coda.samples(model=modelAFT,variable.names=variable.names,n.iter=n.iter,thin=thin)
 
-setwd(WorkSpacePath)
-save(outputAFT,file='Survival_Cluster4_AFT_multipleDP.rdata')
+setwd(".../your/path/MCMC_output")
+save(outputAFT,file='Survival_Cluster2_AFT_singleDP.rdata')
 
 
 data.out <- as.matrix(outputAFT)
@@ -101,6 +97,15 @@ plot(ts(data.out[,'beta.4.']),xlab="t",ylab="beta: AGE")
 plot(ts(data.out[,'beta.5.']),xlab="t",ylab="beta: FVC_Score")
 plot(ts(data.out[,'beta.6.']),xlab="t",ylab="beta: CREATINE")
 plot(ts(data.out[,'beta.7.']),xlab="t",ylab="beta: HEMOGLOBIN")
+
+x11()
+par(mfrow=c(2,3))
+plot(density(data.out[,'beta.2.']),main="Cluster 2: Limb_Onset")
+plot(density(data.out[,'beta.3.']),main="Cluster 2: SEX")
+plot(density(data.out[,'beta.4.']),main="Cluster 2: AGE")
+plot(density(data.out[,'beta.5.']),main="Cluster 2: FVC_Score")
+plot(density(data.out[,'beta.6.']),main="Cluster 2: CREATINE")
+plot(density(data.out[,'beta.7.']),main="Cluster 2: HEMOGLOBIN")
 
 # --------------------------------- Plot survival function with Henrik's script ----------------------------------
 
